@@ -1,8 +1,5 @@
 #|
 todo
-demons work of combining link and webpage
-
-
 test other depth levels
 get saving to work
 offer to rewrite links
@@ -86,9 +83,12 @@ add delay (or function to generate delay time)
 
 (defmethod addpage ((mrmanager webpage-manager) (page webpage))
   (format t "~%addpage --->~%")
-  (setf (links-seen mrmanager) (diff-links (links-objects page) (links-seen mrmanager)))
-  (setf (links-crawled mrmanager) (push page (links-crawled mrmanager)))
-  (format t "~%addpage <----~%"))
+  (progn
+    (setf (links-to-crawl mrmanager) (cdr (links-to-crawl mrmanager)))
+    (setf (links-seen mrmanager) (diff-links (links-objects page) (links-seen mrmanager)))
+    (setf (links-crawled mrmanager) (push page (links-crawled mrmanager))))
+  (format t "~%addpage <----~%")
+  mrmanager)
 
 (defparameter *element-tag* (make-hash-table :test #'equal))
 (defparameter *element-tag-alist* '(("a" . "href")
@@ -109,9 +109,9 @@ add delay (or function to generate delay time)
            (manage-saving mrmanager)))
     (format t "crawl-loop <---~%")))
 
-(defun crawl (link-arg)
+(defun crawl (page)
   (multiple-value-bind (body code headers response-uri)
-      (drakma:http-request (url link-arg)
+      (drakma:http-request (url page)
                            :parameters '(("charset" . "utf-8")))
     (declare (ignore code headers))
     (let ((document (closure-html:parse body (cxml-stp:make-builder)))
@@ -130,6 +130,6 @@ add delay (or function to generate delay time)
             (push (puri:render-uri (puri:merge-uris link response-uri) nil)
                   html-links))))
       (progn
-        (setf (html link-arg) body)
-        (setf (links-list link-arg) (nreverse html-links)))
-      link-arg)))
+        (setf (html page) body)
+        (setf (links-list page) (nreverse html-links)))
+      page)))
