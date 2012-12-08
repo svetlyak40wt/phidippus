@@ -1,5 +1,8 @@
 #|
 todo
+demons work of combining link and webpage
+
+
 test other depth levels
 get saving to work
 offer to rewrite links
@@ -18,21 +21,18 @@ add delay (or function to generate delay time)
   (format t "~%main <---~%"))
 
 (defun make-root (url)
-  (make-instance 'link :url url :depth 0))
+  (make-instance 'webpage :url url :depth 0))
 
 (defun make-link (&key url depth)
-  (make-instance 'link :url url :depth depth))
-
-(defclass link ()
-  ((url :accessor url :initarg :url)
-   (depth :accessor depth :initarg :depth)
-   (page :accessor page :initarg :page)))
+  (make-instance 'webpage :url url :depth depth))
 
 (defclass webpage ()
-  ((link :accessor link :initarg :link)
+  ((url :accessor url :initarg :url)
+   (depth :accessor depth :initarg :depth)
+   (page :accessor page :initarg :page)
    (html :accessor html :initarg :html)
    (links-objects :accessor links-objects :initarg :links-objects :initform '())
-   (links-list :accessor links-list :initarg :links-list)))
+   (links-list :accessor links-list :initarg :links-list :initform '())))
 
 (defmethod print-links ((page webpage))
   (format t "~{~A~%~}" (links-list page)))
@@ -86,8 +86,8 @@ add delay (or function to generate delay time)
 
 (defmethod addpage ((mrmanager webpage-manager) (page webpage))
   (format t "~%addpage --->~%")
-  (setf links-seen (diff-links (links-objects page) (links-seen mrmanager)))
-  (setf links-crawled (append links-crawled))
+  (setf (links-seen mrmanager) (diff-links (links-objects page) (links-seen mrmanager)))
+  (setf (links-crawled mrmanager) (push page (links-crawled mrmanager)))
   (format t "~%addpage <----~%"))
 
 (defparameter *element-tag* (make-hash-table :test #'equal))
@@ -129,4 +129,7 @@ add delay (or function to generate delay time)
           (when link
             (push (puri:render-uri (puri:merge-uris link response-uri) nil)
                   html-links))))
-      (make-instance 'webpage :html body :links-list (nreverse html-links) :link link-arg))))
+      (progn
+        (setf (html link-arg) body)
+        (setf (links-list link-arg) (nreverse html-links)))
+      link-arg)))
