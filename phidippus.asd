@@ -9,7 +9,7 @@
                #:lparallel
                #:drakma
                #:closure-html
-               #:cxml-stp)
+               #:cxml-stp
+               #:cl-fad)
   :components ((:file "package")
                (:file "phidippus")))
-
