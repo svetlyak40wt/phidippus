@@ -12,7 +12,7 @@ add delay (or function to generate delay time)
   (format t "~%main --->~%") ;; (format t "~{~A~%~}" (crawl "http://www.google.com"))
   (initialize-element-tag-table)
   (setf l1 (make-root "http://twitter.github.com/bootstrap/"))   ;; (setf l1 (make-root "http://www.reddit.com"))
-  (setf m2 (make-instance 'webpage-manager :root-link l1 :depth-limit 0))
+  (setf m2 (make-instance 'webpage-manager :root-link l1 :depth-limit 0 :save-to "/tmp/test" :overwrite t))
   (format t "~%main <---~%"))
 
 (defparameter *element-tag* (make-hash-table :test #'equal))
@@ -63,20 +63,46 @@ add delay (or function to generate delay time)
    (depth-limit :accessor depth-limit :initarg :depth-limit :initform 1) ;root limit
    (links-seen :accessor links-seen :initarg :links-seen :initform '()) ;links seen
    (links-crawled :accessor links-crawled :initarg :links-crawled :initform '()) ;links crawled
+   (overwrite :accessor overwrite :initarg :overwrite :initform nil) ;delete and create new dir
+   (save-flat :accessor save-flat :initarg :overwrite :initform save-flat) ;delete and create new dir
    (links-to-crawl :accessor links-to-crawl :initarg :links-to-crawl :initform '()))) ;links left to crawl
 
 (defmethod initialize-instance :after ((mrmanager webpage-manager) &key)
   (setf (links-to-crawl mrmanager) (push (root-link mrmanager) (links-to-crawl mrmanager)))
-  (setf (links-crawled mrmanager) (list (root-link mrmanager)))
   (crawl-loop mrmanager))
 
 (defmethod manage-saving ((mrmanager webpage-manager))
-  (format t "saving... NOT ~%"))
+  (format t "dir to save to: ~A~%" (save-to mrmanager))
+  (format t "overwrite: ~A~%" (overwrite mrmanager))
+  (let ((dir-handle nil))
+    (cond ((not (cl-fad:directory-exists-p (save-to mrmanager)))
+           (setf dir-handle (ensure-directories-exist (cl-fad:pathname-as-directory (save-to mrmanager)))))
+          ((and (not (overwrite mrmanager)) (cl-fad:directory-exists-p (save-to mrmanager)))
+           (format t "The folder '~A' already exists, please specify overwrite status or a new directory name."))
+          ((and (overwrite mrmanager) (cl-fad:directory-exists-p (save-to mrmanager)))
+           (cl-fad:delete-directory-and-files (save-to mrmanager))
+           (setf dir-handle (ensure-directories-exist (cl-fad:pathname-as-directory (save-to mrmanager))))))
+    (if dir-handle
+        (populate-directory mrmanager dir-handle))))
+
+;;http://www.socher.org/index.php/Main/WriteToFileInLisp
+(defun write-to-file (name content)
+  (with-open-file (stream  name :direction :output
+                                :if-exists :overwrite
+                                :if-does-not-exist :create )
+    (format stream content))
+  name)
+
+(defmethod populate-directory ((mrmanager webpage-manager) (dir-handle pathname))
+  (let ((hashtbl (make-hash-table-from-links (links-crawled mrmanager))))
+    (loop for page in (links-crawled mrmanager) do
+      (format t "writing page with url: ~A~%" (url page))
+      (let ((filename (merge-pathnames dir-handle (cl-ppcre:regex-replace-all "\\W" (subseq (url page) 7) "-"))))
+        (format t "writing page with filename: ~A~%" filename)
+        (write-to-file filename (html page) )))))
 
 (defun get-new-links-sat (links-vetted links-new f)
-  (format t "get-new-links-sat --- length links-vetted: ~A~%" (length links-vetted))
-  (format t "get-new-links-sat --- length links-new: ~A~%" (length links-new))
-  (let* ((hashtbl (make-hash-table-from-links links-vetted))
+  (let ((hashtbl (make-hash-table-from-links links-vetted))
          (to-return '()))
     (loop for i in links-new do
       (cond
