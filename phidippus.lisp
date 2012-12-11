@@ -1,7 +1,8 @@
 #|
 todo
-get saving to work - cl-fad TODO #1
-offer to rewrite links 
+be able to handle broken urls/improper data
+make sure saving in the dir tree works for multiple domain links
+offer to rewrite links relative to each other when saved
 add delay (or function to generate delay time)
 |#
 
@@ -23,6 +24,7 @@ add delay (or function to generate delay time)
 ;; For writing a string to a file
 ;; found @http://www.socher.org/index.php/Main/WriteToFileInLisp
 (defun write-to-file (name content)
+  (format t "got here, name: ~A~%" name)
   (let ((correct-name (correct-filename name)))
     (with-open-file (stream correct-name :direction :output
                             :if-exists :overwrite
@@ -38,7 +40,8 @@ add delay (or function to generate delay time)
   (debug-print "~%main --->~%")
   (initialize-element-tag-table)
   ;;(setf l1 (make-root "http://twitter.github.com/bootstrap/"))   ;; (setf l1 (make-root "http://www.reddit.com"))
-  (setf l1 (make-root "http://www.gigamonkeys.com/"))
+  ;; (setf l1 (make-root "http://www.gigamonkeys.com/"))
+  (setf l1 (make-root "http://www.google.com"))
   (setf m2 (make-instance 'webpage-manager :root-link l1 :depth-limit 1 :save-to "/tmp/test" :overwrite t :save-flat nil))
   (format t "~%main <---~%"))
 
@@ -274,8 +277,9 @@ add delay (or function to generate delay time)
                          (if tag
                               (cxml-stp:attribute-value a tag))))
                    (when link
-                     (push (puri:render-uri (puri:merge-uris link response-uri) nil)
-                           html-links))))
+                     (if (not (equal "javascript:void(0);" link))
+                         (push (puri:render-uri (puri:merge-uris link response-uri) nil)
+                               html-links)))))
                (progn
                  (setf (html page) body)
                  (add-links-to-page page (nreverse html-links)))
@@ -283,6 +287,7 @@ add delay (or function to generate delay time)
               (progn
                 (setf (html page) body)
                 page))))))
+
 ;; for crawling <---------------------------------------------------------------
 
 ;; <----------------------------------------------------------------------------
