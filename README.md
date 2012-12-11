@@ -1,4 +1,5 @@
 phidippus
 =========
 
-a common lisp web spider / web crawler
+A simplistic common lisp web spider / web crawler.
+

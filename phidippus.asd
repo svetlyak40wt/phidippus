@@ -10,6 +10,9 @@
                #:drakma
                #:closure-html
                #:cxml-stp
-               #:cl-fad)
+               #:cl-fad
+               #:stefil
+               #:log4cl
+               #:puri)
   :components ((:file "package")
                (:file "phidippus")))
