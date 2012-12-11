@@ -9,12 +9,13 @@ add delay (or function to generate delay time)
 ;;;; phidippus.lisp
 (in-package #:phidippus)
 
+(log4cl:config :properties "logs/log4cl.properties" :watch)
 
 
 ;; Utilities
 (defmacro debug-print (string)
   `(when (log4cl:debug)
-    (log4cl:debug string)))
+    (log4cl:debug ,string)))
 
 (defun correct-filename (filename)
   (if (eql (subseq filename (1- (length filename))) #\/)
@@ -23,33 +24,34 @@ add delay (or function to generate delay time)
 
 ;; For writing a string to a file
 ;; found @http://www.socher.org/index.php/Main/WriteToFileInLisp
-(defun write-to-file (name content)
-  (format t "got here, name: ~A~%" name)
-  (let ((correct-name (correct-filename name)))
-    (with-open-file (stream correct-name :direction :output
-                            :if-exists :overwrite
-                            :if-does-not-exist :create)
-      (format stream content))
-    correct-name))
-
+(defun write-to-file (filename content)
+  (format t "write-to-file --- got here, filename: ~A~%" filename)
+  (format t "write-to-file --- type-of content: ~A~%" (reverse (rest (reverse (type-of content)))))
+  (if (not (typep content '(simple-array (unsigned-byte 8))))
+      (with-open-file (stream filename
+                              :direction :output
+                              :if-exists :overwrite
+                              :if-does-not-exist :create)
+        (format stream content))
+      (with-open-file (stream filename
+                              :direction :output
+                              :element-type '(unsigned-byte 8))
+        (write-sequence content stream)))
+  filename)
 
 ;;
 ;; An easy way of calling the library for testing
 ;;
-(defun main ()
+(defun test ()
   (debug-print "~%main --->~%")
   (initialize-element-tag-table)
   ;;(setf l1 (make-root "http://twitter.github.com/bootstrap/"))   ;; (setf l1 (make-root "http://www.reddit.com"))
   ;; (setf l1 (make-root "http://www.gigamonkeys.com/"))
   (setf l1 (make-root "http://www.google.com"))
+  ;; (setf l1 (make-root "http://gmaps-samples.googlecode.com/svn/trunk/slides/images/google-logo.png"))
   (setf m2 (make-instance 'webpage-manager :root-link l1 :depth-limit 1 :save-to "/tmp/test" :overwrite t :save-flat nil))
   (format t "~%main <---~%"))
 
-(defun make-hash-table-from-links (links)
-  (let ((tbl (make-hash-table)))
-    (loop for i in links do
-         (setf (gethash (url i) tbl) i))
-    tbl))
 
 ;; ---------------------------------------------------------------------------->
 ;; webpage -------------------------------------------------------------------->
@@ -65,6 +67,11 @@ add delay (or function to generate delay time)
    (links-objects :accessor links-objects :initarg :links-objects :initform '())
    (links-list :accessor links-list :initarg :links-list :initform '())))
 
+(defun make-hash-table-from-links (links)
+  (let ((tbl (make-hash-table)))
+    (loop for i in links do
+         (setf (gethash (url i) tbl) i))
+    tbl))
 
 ;; methods for webpage objects ------------------------------------------------>
 (defmethod add-links-to-page ((page webpage) lst)
@@ -115,10 +122,13 @@ add delay (or function to generate delay time)
   (setf (links-to-crawl mrmanager) (push (root-link mrmanager) (links-to-crawl mrmanager)))
   (crawl-loop mrmanager))
 
+
+
+
 ;; for saving pages  ---------------------------------------------------------->
 (defmethod manage-saving ((mrmanager webpage-manager))
-  (format t "dir to save to: ~A~%" (save-to mrmanager))
-  (format t "overwrite: ~A~%" (overwrite mrmanager))
+  (format t "manage-saving --- dir to save to: ~A~%" (save-to mrmanager))
+  (format t "manage-saving --- overwrite: ~A~%" (overwrite mrmanager))
   (let ((dir-handle nil))
     (cond ((not (cl-fad:directory-exists-p (save-to mrmanager)))
            ;;if the directory doesn't exist and saving is okay
@@ -143,38 +153,37 @@ add delay (or function to generate delay time)
         (populate-directory-tree mrmanager dir-handle))))
 
 (defmethod populate-directory-flat ((mrmanager webpage-manager) (dir-handle pathname))
-  (format t "populating flat directory~%")
+  (format t "populate-directory-flat --->~%")
   (loop for page in (links-crawled mrmanager) do
-       (format t "writing page with url: ~A~%" (url page))
+       (format t "populate-directory-flat --- writing page with url: ~A~%" (url page))
        (let ((filename (merge-pathnames dir-handle (cl-ppcre:regex-replace-all "\\W" (subseq (url page) 7) "-"))))
-         (format t "writing page with filename: ~A~%" filename)
+         (format t "populate-directory-flat --- writing page with filename: ~A~%" filename)
          (write-to-file filename (html page)))))
 
-
 (defun save-page-to-path (page dir-handle path)
-  (format t "1~%")
+  (format t "save-page-to-path --->~%")
   (labels ((save-rest (page pathcur pathleft)
-             (format t "2~%")
-             (format t "type-of pathcur: ~A~%" pathcur)
-             (format t "type-of (car pathleft): ~A~%" (type-of (car pathleft)))
+             (format t "save-page-to-path --- 2~%")
+             (format t "save-page-to-path --- type-of pathcur: ~A~%" pathcur)
+             (format t "save-page-to-path --- type-of (car pathleft): ~A~%" (type-of (car pathleft)))
              (let ((newpath (merge-pathnames pathcur (car pathleft))))
-               (format t "3~%")
-               (format t "type-of newpath: ~A~%" (type-of newpath))
-               (format t "newpath: ~A~%"  newpath)
-               (format t "type-of (cdr pathleft): ~A~%" (type-of (cdr pathleft)))
-               (format t "(cdr pathleft): ~A~%" (cdr pathleft))
-               (if (null (cdr (cdr pathleft)))
+               (format t "save-page-to-path --- 3~%")
+               (format t "save-page-to-path --- type-of newpath: ~A~%" (type-of newpath))
+               (format t "save-page-to-path --- newpath: ~A~%"  newpath)
+               (format t "save-page-to-path --- type-of (cdr pathleft): ~A~%" (type-of (cdr pathleft)))
+               (format t "save-page-to-path --- (cdr pathleft): ~A~%" (cdr pathleft))
+               (if (null (cdr pathleft))
                    (progn
-                     (format t "3.5~%")
+                     (format t "save-page-to-path --- 3.5~%")
                      (write-to-file (namestring newpath) (html page))) ;; if this is the last element save the filename there
                    (if (cl-fad:directory-exists-p newpath)
                        (progn
-                         (format t "4~%")
+                         (format t "save-page-to-path --- 4~%")
                          (save-rest page newpath (cdr pathleft)))
                        (progn
-                         (format t "5~%")                         
+                         (format t "save-page-to-path --- 5~%")                         
                          (save-rest page (ensure-directories-exist (cl-fad:pathname-as-directory newpath)) (cdr pathleft))))))))
-    (format t "6~%")
+    (format t "save-page-to-path --- 6~%")
     (save-rest page dir-handle path)))
 
 (defmethod populate-directory-tree ((mrmanager webpage-manager) (dir-handle pathname))
@@ -263,7 +272,8 @@ add delay (or function to generate delay time)
             (drakma:http-request (url page)
                                 :parameters '(("charset" . "utf-8")))
           (declare (ignore code headers))
-          (if (not (typep body '(simple-array (unsigned-byte 8))))
+          (if (and (not (typep body '(simple-array (unsigned-byte 8))))
+                   (not (typep body '(and (vector (unsigned-byte 8)) (not simple-array)))))
               (let ((document (closure-html:parse body (cxml-stp:make-builder)))
                     html-links)
                (cxml-stp:do-recursively (a document)

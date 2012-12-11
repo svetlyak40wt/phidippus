@@ -13,6 +13,7 @@
                #:cl-fad
                #:stefil
                #:log4cl
-               #:puri)
+               #:puri
+               #:flexi-streams)
   :components ((:file "package")
                (:file "phidippus")))

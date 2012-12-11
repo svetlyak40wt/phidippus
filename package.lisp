@@ -2,4 +2,4 @@
 
 (defpackage #:phidippus
   (:use #:cl)
-  (:export #:main))
+  (:export #:test))
