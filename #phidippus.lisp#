@@ -289,7 +289,7 @@ add delay (or function to generate delay time)
                    (when link
                      (if (not (equal "javascript:void(0);" link))
                          (progn
-                           (format t "add exception handling here?")
+                           
                            (push (puri:render-uri (puri:merge-uris link response-uri) nil)
                                  html-links))))))
                (progn
